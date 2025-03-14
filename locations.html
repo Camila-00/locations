@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        li { padding: 8px 0; border-bottom: 1px solid #ddd; cursor: pointer; }
+        a { color: #2563eb; text-decoration: none; word-wrap: break-word; }
+        a:hover { text-decoration: underline; }
+        #altTextContainer { min-width: 250px; max-width: fit-content; }
+    </style>
+</head>
+<body class="p-6 bg-gray-100">
+    <div class="max-w-7xl mx-auto flex gap-6">
+        <div class="w-1/5 p-4 bg-white shadow-md rounded-lg">
+            <h2 class="font-bold text-lg border-b pb-2 mb-2">Search History</h2>
+            <ul id="searchHistory" class="space-y-2"></ul>
+        </div>
+
+        <div class="w-3/5">
+            <input type="text" id="searchInput" class="w-full p-3 border rounded-lg shadow-sm focus:ring focus:ring-blue-300" placeholder="Search location...">
+            <input type="text" id="companyInput" class="w-full mt-3 p-3 border rounded-lg shadow-sm focus:ring focus:ring-blue-300" placeholder="Enter Company Name...">
+
+            <div class="mt-6">
+                <div class="p-4 bg-white shadow-md rounded-lg mb-6">
+                    <h2 class="font-bold text-lg border-b pb-2 mb-2">Search Results</h2>
+                    <ul id="searchResults" class="space-y-2"></ul>
+                </div>
+
+                <div class="p-4 bg-white shadow-md rounded-lg">
+                    <h2 class="font-bold text-lg border-b pb-2 mb-2">Previous Search Result</h2>
+                    <ul id="previousResult" class="space-y-2"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-1/5 p-4 bg-white shadow-md rounded-lg" id="altTextContainer">
+            <h2 class="font-bold text-lg border-b pb-2 mb-2">Generated ALT Text</h2>
+            <ul id="altTextOutput" class="space-y-2"></ul>
+
+            <div class="mt-6">
+                <h2 class="font-bold text-lg border-b pb-2 mb-2">Previous ALT Text Results</h2>
+                <ul id="altTextHistory" class="space-y-2"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sheetURL = "https://script.google.com/macros/s/AKfycbxP9QjHtw_10mhp44_1ITeJjfSIw4EqtRI-oy70suIPymrSRjxpuLmy_QS4YJpuuQpT/exec";
+        let locations = [];
+        let searchHistory = [];
+        let altTextHistory = [];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(sheetURL, { mode: 'cors' });
+                const text = await response.text();
+                console.log("Raw Response:", text);
+
+                const jsonData = JSON.parse(text);
+                console.log("Parsed JSON Data:", jsonData);
+
+                if (Array.isArray(jsonData)) {
+                    locations = jsonData;
+                    console.log("Locations Data Loaded Successfully:", locations);
+                } else {
+                    console.error("Unexpected response format", jsonData);
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function formatURL(url) {
+            return url ? (url.startsWith("http") ? url : `https://${url}`) : null;
+        }
+
+        function searchLocation() {
+            const query = document.getElementById("searchInput").value.toLowerCase().trim();
+            const companyName = document.getElementById("companyInput").value.trim();
+
+            const results = locations.filter(entry => entry.location && entry.location.toLowerCase().includes(query));
+
+            console.log("Search Query:", query);
+            console.log("Filtered Results:", results);
+
+            displayResults(results);
+            updateHistory(query, results);
+            generateAltText(companyName, results);
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById("searchResults");
+            resultsContainer.innerHTML = results.length
+                ? results.map(r => `
+                    <li>
+                        <span>
+                            <a href="${formatURL(r.links)}" target="_blank">${r.location}</a>
+                        </span>
+                        <br>
+                        ${r.links ? `<a href="${formatURL(r.links)}" target="_blank">${r.links}</a>` : ''}
+                        <br>
+                        ${r.localstockImages && r.localstockLinks
+                            ? `<strong>Localstock Link:</strong> <a href="${formatURL(r.localstockLinks)}" target="_blank">${r.localstockImages}</a>`
+                            : ''
+                        }
+                    </li>
+                `).join('')
+                : '<li class="text-gray-500">No results found</li>';
+        }
+
+
+        function updateHistory(query, results) {
+          if (!query || searchHistory.some(item => item.query === query)) return;
+
+          searchHistory.unshift({ query, results });
+          if (searchHistory.length > 50) searchHistory.pop();
+
+          const historyContainer = document.getElementById("searchHistory");
+          historyContainer.innerHTML = searchHistory.map((item, index) => `
+              <li class="text-gray-700 hover:text-blue-600" onclick="showPreviousResult(${index})">
+                  ${item.results.length > 0 ? item.results[0].location : query}
+              </li>
+          `).join('');
+      }
+
+      function showPreviousResult(index) {
+          const previousResultsContainer = document.getElementById("previousResult");
+          const results = searchHistory[index].results;
+
+          previousResultsContainer.innerHTML = results.length
+              ? results.map(r => `
+                  <li>
+                      <span>
+                          <a href="${formatURL(r.links)}" target="_blank">${r.location}</a>
+                      </span>
+                      <br>
+                      ${r.links ? `<a href="${formatURL(r.links)}" target="_blank">${r.links}</a>` : ''}
+                      <br>
+                      ${r.localstockImages && r.localstockLinks
+                          ? `<strong>Localstock Link:</strong> <a href="${formatURL(r.localstockLinks)}" target="_blank">${r.localstockImages}</a>`
+                          : ''
+                      }
+                  </li>
+              `).join('')
+              : '<li class="text-gray-500">No results found</li>';
+      }
+
+
+        function generateAltText(companyName, results) {
+            const altTextContainer = document.getElementById("altTextOutput");
+
+            if (!companyName || results.length === 0) {
+                altTextContainer.innerHTML = '<li class="text-gray-500">No ALT text available</li>';
+                return;
+            }
+
+            const generatedAltTexts = results.map(r => `— ${companyName} in ${r.location}`);
+
+            altTextContainer.innerHTML = generatedAltTexts.map(text => `<li>${text}</li>`).join('');
+            altTextHistory.unshift(...generatedAltTexts);
+            if (altTextHistory.length > 50) altTextHistory = altTextHistory.slice(0, 50);
+            updateAltTextHistory();
+        }
+
+        function updateAltTextHistory() {
+            document.getElementById("altTextHistory").innerHTML = altTextHistory.map(text => `<li>${text}</li>`).join('');
+        }
+
+        document.getElementById("searchInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") searchLocation();
+        });
+
+        fetchData();
+    </script>
+
+</body>
+</html>
