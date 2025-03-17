@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        li { padding: 8px 0; border-bottom: 1px solid #ddd; cursor: pointer; }
+        a { color: #2563eb; text-decoration: none; word-wrap: break-word; }
+        a:hover { text-decoration: underline; }
+        #altTextContainer { min-width: 250px; max-width: fit-content; }
+        .autocomplete-suggestions {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 1000;
+        }
+        .autocomplete-suggestions div {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestions div:hover {
+            background: #f0f0f0;
+        }
+        /* Dark Mode Switch */
+.switch {
+  display: block;
+  --width-of-switch: 3.5em;
+  --height-of-switch: 2em;
+  --size-of-icon: 1.4em;
+  --slider-offset: 0.3em;
+  position: relative;
+  width: var(--width-of-switch);
+  height: var(--height-of-switch);
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f4f4f5;
+  transition: .4s;
+  border-radius: 30px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: var(--size-of-icon);
+  width: var(--size-of-icon);
+  border-radius: 20px;
+  left: var(--slider-offset);
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(40deg,#ff0080,#ff8c00 70%);
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #303136;
+}
+
+input:checked + .slider:before {
+  left: calc(100% - (var(--size-of-icon) + var(--slider-offset)));
+  background: #303136;
+  box-shadow: inset -3px -2px 5px -2px #8983f7, inset -10px -4px 0 0 #a3dafb;
+}
+.switch {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+/* 🌙 Global Dark Mode Background */
+.dark-mode {
+    background-color: #2a1e35 !important; /* Muted dark purple */
+    color: #ffffff !important; /* White text */
+}
+
+/* 📦 Fully Themed Containers */
+.dark-mode div,
+.dark-mode section,
+.dark-mode article,
+.dark-mode .container,
+.dark-mode .box,
+.dark-mode .card,
+.dark-mode .panel {
+    background-color: #3b2d4a !important; /* Muted purple */
+    border: 1px solid #5a4a6d !important; /* Gray-purple border */
+    color: #ffffff !important; /* White text */
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* 🔍 Inputs & Search Bar */
+.dark-mode input,
+.dark-mode textarea {
+    background-color: #4a3a5e !important; /* Darker purple */
+    color: #ffffff !important; /* White text */
+    border: 1px solid #5a4a6d !important;
+}
+
+/* 📝 Placeholder Text */
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+    color: #c2b7d1 !important; /* Light grayish-purple */
+}
+
+/* 🔽 Dropdowns & Select Elements */
+.dark-mode select {
+    background-color: #4a3a5e !important;
+    color: #ffffff !important;
+    border: 1px solid #5a4a6d !important;
+}
+
+/* 🔍 Fix Search History Text & Add Hover Effect */
+.dark-mode #searchHistory li {
+    color: #ffffff !important; /* Full white text */
+    border: 1px solid #5a4a6d !important; /* Subtle border */
+    padding: 8px;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* 🖱️ Hover Effect */
+.dark-mode #searchHistory li:hover {
+    background-color: #6a5a8a; /* Muted lavender (good contrast) */
+    color: #ffffff; /* Keep text white */
+}
+
+
+/* 🔄 Search Results & History */
+.dark-mode #searchResults,
+.dark-mode #previousResult,
+.dark-mode #altTextOutput,
+.dark-mode #searchHistory {
+    background-color: #3b2d4a !important; /* Muted purple */
+    border: 1px solid #5a4a6d !important;
+    color: #ffffff !important;
+
+}
+
+/* 🔗 Links */
+.dark-mode a {
+    color: #b3a1e6 !important; /* Soft lavender */
+}
+
+/* 🔍 Autocomplete Suggestions */
+.dark-mode #autocompleteResults div {
+    background-color: #4a3a5e !important;
+    color: #ffffff !important;
+}
+
+/* 🎚 Dark Mode Toggle */
+.dark-mode .slider {
+    background-color: #5a4a6d !important;
+}
+
+.dark-mode .slider:before {
+    background: #a399c6 !important;
+    box-shadow: inset -3px -2px 5px -2px #d1c4e9, inset -10px -4px 0 0 #c0b3e6 !important;
+}
+
+
+
+
+    </style>
+</head>
+<label class="switch">
+    <input type="checkbox" id="darkModeToggle">
+    <span class="slider"></span>
+</label>
+
+<body class="p-6 bg-gray-100">
+    <div class="max-w-7xl mx-auto flex gap-6">
+        <div class="w-1/5 p-4 bg-white shadow-md rounded-lg">
+            <h2 class="font-bold text-lg border-b pb-2 mb-2">Search History</h2>
+            <ul id="searchHistory" class="space-y-2"></ul>
+        </div>
+
+        <div class="w-3/5 relative">
+            <input type="text" id="searchInput" class="w-full p-3 border rounded-lg shadow-sm focus:ring focus:ring-blue-300" placeholder="Search location...">
+            <div id="autocompleteResults" class="autocomplete-suggestions hidden"></div>
+
+            <input type="text" id="companyInput" class="w-full mt-3 p-3 border rounded-lg shadow-sm focus:ring focus:ring-blue-300" placeholder="Enter Company Name...">
+
+            <div class="mt-6">
+                <div class="p-4 bg-white shadow-md rounded-lg mb-6">
+                    <h2 class="font-bold text-lg border-b pb-2 mb-2">Search Results</h2>
+                    <ul id="searchResults" class="space-y-2"></ul>
+                </div>
+
+                <div class="p-4 bg-white shadow-md rounded-lg">
+                    <h2 class="font-bold text-lg border-b pb-2 mb-2">Previous Search Result</h2>
+                    <ul id="previousResult" class="space-y-2"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-1/5 p-4 bg-white shadow-md rounded-lg" id="altTextContainer">
+            <h2 class="font-bold text-lg border-b pb-2 mb-2">Generated ALT Text</h2>
+            <ul id="altTextOutput" class="space-y-2"></ul>
+
+            <div class="mt-6">
+                <h2 class="font-bold text-lg border-b pb-2 mb-2">Previous ALT Text Results</h2>
+                <ul id="altTextHistory" class="space-y-2"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sheetURL = "https://script.google.com/macros/s/AKfycbxP9QjHtw_10mhp44_1ITeJjfSIw4EqtRI-oy70suIPymrSRjxpuLmy_QS4YJpuuQpT/exec";
+        let locations = [];
+        let searchHistory = [];
+        let altTextHistory = [];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(sheetURL, { mode: 'cors' });
+                const text = await response.text();
+                console.log("Raw Response:", text);
+
+                const jsonData = JSON.parse(text);
+                console.log("Parsed JSON Data:", jsonData);
+
+                if (Array.isArray(jsonData)) {
+                    locations = jsonData;
+                    console.log("Locations Data Loaded Successfully:", locations);
+                } else {
+                    console.error("Unexpected response format", jsonData);
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function formatURL(url) {
+            return url ? (url.startsWith("http") ? url : `https://${url}`) : null;
+        }
+
+        function searchLocation() {
+            const query = document.getElementById("searchInput").value.toLowerCase().trim();
+            const companyName = document.getElementById("companyInput").value.trim();
+
+            const results = locations.filter(entry => entry.location && entry.location.toLowerCase().includes(query));
+
+            console.log("Search Query:", query);
+            console.log("Filtered Results:", results);
+
+            displayResults(results);
+            updateHistory(query, results);
+            generateAltText(companyName, results);
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById("searchResults");
+            resultsContainer.innerHTML = results.length
+                ? results.map(r => `
+                    <li>
+                        <span>
+                            <a href="${formatURL(r.links)}" target="_blank">${r.location}</a>
+                        </span>
+                        <br>
+                        ${r.links ? `<a href="${formatURL(r.links)}" target="_blank">${r.links}</a>` : ''}
+                        <br>
+                        ${r.localstockImages && r.localstockLinks
+                            ? `<strong>Localstock Link:</strong> <a href="${formatURL(r.localstockLinks)}" target="_blank">${r.localstockImages}</a>`
+                            : ''
+                        }
+                    </li>
+                `).join('')
+                : '<li class="text-gray-500">No results found</li>';
+        }
+
+        function updateHistory(query, results) {
+            if (!query || searchHistory.some(item => item.query === query)) return;
+
+            searchHistory.unshift({ query, results });
+            if (searchHistory.length > 50) searchHistory.pop();
+
+            const historyContainer = document.getElementById("searchHistory");
+            historyContainer.innerHTML = searchHistory.map((item, index) => `
+                <li class="text-gray-700 hover:text-blue-600" onclick="showPreviousResult(${index})">
+                    ${item.results.length > 0 ? item.results[0].location : query}
+                </li>
+            `).join('');
+        }
+
+        function showPreviousResult(index) {
+            const previousResultContainer = document.getElementById("previousResult");
+            const previousSearch = searchHistory[index];
+
+            if (previousSearch && previousSearch.results.length > 0) {
+                previousResultContainer.innerHTML = previousSearch.results.map(r => `
+                    <li>
+                        <span>
+                            <a href="${formatURL(r.links)}" target="_blank">${r.location}</a>
+                        </span>
+                        <br>
+                        ${r.links ? `<a href="${formatURL(r.links)}" target="_blank">${r.links}</a>` : ''}
+                        <br>
+                        ${r.localstockImages && r.localstockLinks
+                            ? `<strong>Localstock Link:</strong> <a href="${formatURL(r.localstockLinks)}" target="_blank">${r.localstockImages}</a>`
+                            : ''
+                        }
+                    </li>
+                `).join('');
+            } else {
+                previousResultContainer.innerHTML = '<li class="text-gray-500">No previous results available</li>';
+            }
+        }
+
+        function generateAltText(companyName, results) {
+            const altTextContainer = document.getElementById("altTextOutput");
+
+            if (!companyName || results.length === 0) {
+                altTextContainer.innerHTML = '<li class="text-gray-500">No ALT text available</li>';
+                return;
+            }
+
+            const generatedAltTexts = results.map(r => `— ${companyName} in ${r.location}`);
+
+            altTextContainer.innerHTML = generatedAltTexts.map(text => `<li>${text}</li>`).join('');
+            altTextHistory.unshift(...generatedAltTexts);
+            if (altTextHistory.length > 50) altTextHistory = altTextHistory.slice(0, 50);
+            updateAltTextHistory();
+        }
+
+        function updateAltTextHistory() {
+            document.getElementById("altTextHistory").innerHTML = altTextHistory.map(text => `<li>${text}</li>`).join('');
+        }
+
+        document.getElementById("searchInput").addEventListener("input", function() {
+            const query = this.value.toLowerCase();
+            const autocompleteContainer = document.getElementById("autocompleteResults");
+            const suggestions = locations.filter(entry => entry.location.toLowerCase().startsWith(query));
+
+            if (suggestions.length) {
+                autocompleteContainer.innerHTML = suggestions.map(s => `<div onclick="selectSuggestion('${s.location}')">${s.location}</div>`).join('');
+                autocompleteContainer.classList.remove("hidden");
+            } else {
+                autocompleteContainer.classList.add("hidden");
+            }
+        });
+
+        function selectSuggestion(value) {
+            document.getElementById("searchInput").value = value;
+            document.getElementById("autocompleteResults").classList.add("hidden");
+            searchLocation();
+        }
+
+        fetchData();
+
+        // Dark Mode Toggle Functionality
+        const darkModeToggle = document.getElementById("darkModeToggle");
+        const body = document.body;
+
+        function setDarkMode(enabled) {
+            if (enabled) {
+                body.classList.add("dark-mode");
+                localStorage.setItem("darkMode", "enabled");
+            } else {
+                body.classList.remove("dark-mode");
+                localStorage.setItem("darkMode", "disabled");
+            }
+        }
+
+        darkModeToggle.addEventListener("change", () => {
+            setDarkMode(darkModeToggle.checked);
+        });
+
+        // Load Dark Mode Preference
+        if (localStorage.getItem("darkMode") === "enabled") {
+            darkModeToggle.checked = true;
+            setDarkMode(true);
+        }
+    </script>
+
+</body>
+</html>
